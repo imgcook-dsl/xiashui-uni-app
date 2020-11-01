@@ -1,22 +1,10 @@
 module.exports = function (schema, options) {
-  const renderData = {};
-  const {
-    _,
-    helper,
-    prettier,
-    responsive
-  } = options;
-  const {
-    printer,
-    utils
-  } = helper;
 
-  const line = (content, level) =>
-    utils.line(content, {
-      indent: {
-        space: level * 2
-      }
-    });
+  const { _, helper, prettier, responsive } = options;
+  const { printer, utils } = helper;
+
+  // 渲染数据
+  const renderData = {};
 
   // style
   const styleMap = {};
@@ -36,9 +24,25 @@ module.exports = function (schema, options) {
     event: {}
   };
 
+  // 宽高
   let modConfig = responsive || {
     width: 750,
     height: 1334
+  };
+
+  // 代码缩进
+  const line = (content, level) =>
+    utils.line(content, {
+      indent: {
+        space: level * 4
+      }
+    });
+
+  const prettierOpt = {
+    parser: 'vue',
+    tabWidth: 4,
+    printWidth: 120,
+    singleQuote: true
   };
 
   const parseStyleObject = style =>
@@ -230,11 +234,6 @@ module.exports = function (schema, options) {
       scriptMap[COMPONENT_LIFETIMES_MAP[key]] = parseFunction(value);
     });
 
-  // dataSource &&
-  //   Object.entries(dataSource).map(([key, value]) => {
-  //     // console.log(key);
-  //   });
-
   state &&
     Object.entries(state).map(([key, value]) => {
       if (value instanceof Array) {
@@ -255,9 +254,7 @@ module.exports = function (schema, options) {
     const properties = [];
 
     return `
-    import Vue from 'vue';
-
-    export default Vue.extend({
+    export default {
       data() {
         return {}
       },
@@ -265,7 +262,7 @@ module.exports = function (schema, options) {
         console.log('页面加载完成')
       },
       methods: {}
-    })
+    }
     `;
   };
 
@@ -273,15 +270,16 @@ module.exports = function (schema, options) {
     template.unshift(line('<template>'));
     return template.concat(line(`</template>
 
-<script lang="ts" src="./index.ts">
+<script>
+  ${renderData.js}
 </script>
     
 <style lang="scss" scoped>
-  @import url('./index.scss');
+  ${renderData.wxss}
 </style>`))
   };
 
-  renderData.wxml = printer(generatorVueTemplate(renderTemplate(schema, 1)));
+  renderData.wxml = printer(renderTemplate(schema, 1));
   renderData.wxss = printer(renderStyle(styleMap));
   renderData.js = prettier.format(renderScript(scriptMap), {
     parser: 'babel'
@@ -300,21 +298,20 @@ module.exports = function (schema, options) {
     prettierOpt: {},
     panelDisplay: [{
         panelName: 'index.vue',
-        panelValue: renderData.wxml,
-        panelType: 'BuilderRaxView',
-        mode: 'xml'
-      },
-      {
-        panelName: 'index.scss',
-        panelValue: renderData.wxss,
-        panelType: 'BuilderRaxStyle',
-        mode: 'css'
-      },
-      {
-        panelName: 'index.ts',
-        panelValue: renderData.js,
-        panelType: 'BuilderRaxView',
-        mode: 'javascript'
+        panelValue: prettier.format(`
+        <template>
+          ${renderData.wxml}
+        </template>
+
+        <script>
+          ${renderData.js}
+        </script>
+
+        <style lang="scss" scoped>
+          ${renderData.wxss}
+        </style>
+        `, prettierOpt),
+        panelType: 'vue'
       }
     ],
     playground: {
